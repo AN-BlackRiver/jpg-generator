@@ -1,5 +1,5 @@
 services:
-  nginx-jpg-generator:
+  nginx:
     image: nginx:alpine
     ports:
       - "8080:80"
@@ -7,10 +7,10 @@ services:
       - ./app:/var/www/html
       - ./nginx.conf:/etc/nginx/nginx.conf
     depends_on:
-      - php-fpm-jpg-generator
-      - db-jpg-generator
+      - php-fpm
+      - db
 
-  php-fpm-jpg-generator:
+  php-fpm:
     build:
       context: ./docker/php/
       dockerfile: Dockerfile
@@ -24,9 +24,8 @@ services:
       - MYSQL_PASSWORD=root
       - MYSQL_DATABASE=gallery_db
 
-  db-jpg-generator:
+  db:
     image: mysql:8.0
-    container_name: db
     ports:
       - "3306:3306"
     environment:
@@ -34,3 +33,4 @@ services:
       MYSQL_DATABASE: gallery_db
     volumes:
       - ./mysql_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql

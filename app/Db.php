@@ -20,25 +20,29 @@ class Db {
 
     private function __clone() {}
 
-    public static function getInstance() {
+    public static function getInstance(): Db
+    {
         if (self::$instance === null) {
             self::$instance = new Db();
         }
         return self::$instance;
     }
 
-    private function query($sql, $params = []) {
+    private function query($sql, $params = []): PDOStatement
+    {
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
         return $stmt;
     }
 
-    public function fetchOne($sql, $params = []) {
+    public function fetchOne($sql, $params = []): array
+    {
         $stmt = $this->query($sql, $params);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public function close() {
+    public function close(): void
+    {
         $this->pdo = null;
     }
 }

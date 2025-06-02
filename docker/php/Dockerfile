@@ -16,6 +16,4 @@ RUN apt-get install -y \
 
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /var/www/html/cache && chown -R www-data:www-data /var/www/html/cache
-
 RUN groupmod -g 1000 www-data && usermod -u 1000 -g 1000 www-data

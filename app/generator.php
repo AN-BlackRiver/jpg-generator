@@ -1,30 +1,44 @@
 <?php
 require_once __DIR__ . '/Db.php';
 
-if (!isset($_GET['name']) || !isset($_GET['size'])) {
-    die("Необходимо указать параметры 'name' и 'size'.");
+$name = $_GET['name'] ?? null;
+$size = $_GET['size'] ?? null;
+
+if (!$name || !$size) {
+    http_response_code(400);
+    exit("Необходимо указать параметры 'name' и 'size'.");
 }
 
-$name = $_GET['name'];
-$size = $_GET['size'];
+if (!preg_match('/^[a-zA-Z0-9_-]+$/', $name)) {
+    http_response_code(400);
+    exit("Недопустимое имя файла.");
+}
 
 $originalPath = __DIR__ . "/gallery/$name.jpg";
 if (!file_exists($originalPath)) {
-    die("Изображение не найдено.");
+    http_response_code(404);
+    exit("Изображение не найдено.");
 }
 
-$db = Db::getInstance();
-
-$dimensions = $db->fetchOne("SELECT width, height FROM image_sizes WHERE size_code = ?", [$size]);
-
-$db->close();
+try {
+    $db = Db::getInstance();
+    $dimensions = $db->fetchOne(
+        "SELECT width, height FROM image_sizes WHERE size_code = ?",
+        [$size]
+    );
+    $db->close();
+} catch (Throwable $e) {
+    http_response_code(500);
+    exit("Ошибка подключения к базе данных.");
+}
 
 if (!$dimensions) {
-    die("Недопустимый размер '$size'.");
+    http_response_code(400);
+    exit("Недопустимый размер '$size'.");
 }
 
-$maxWidth = $dimensions['width'];
-$maxHeight = $dimensions['height'];
+$maxWidth = (int)$dimensions['width'];
+$maxHeight = (int)$dimensions['height'];
 
 $cachePath = __DIR__ . "/cache/{$name}_{$size}.jpg";
 
@@ -34,28 +48,26 @@ if (file_exists($cachePath)) {
     exit;
 }
 
-list($originalWidth, $originalHeight) = getimagesize($originalPath);
+[$originalWidth, $originalHeight] = getimagesize($originalPath);
 
 $ratio = min($maxWidth / $originalWidth, $maxHeight / $originalHeight);
-$newWidth = intval($originalWidth * $ratio);
-$newHeight = intval($originalHeight * $ratio);
+$newWidth = max(1, (int)($originalWidth * $ratio));
+$newHeight = max(1, (int)($originalHeight * $ratio));
 
-$image = imagecreatefromjpeg($originalPath);
-$resizedImage = imagecreatetruecolor($newWidth, $newHeight);
+$srcImage = imagecreatefromjpeg($originalPath);
+$dstImage = imagecreatetruecolor($newWidth, $newHeight);
 
 imagecopyresampled(
-    $resizedImage,
-    $image,
+    $dstImage, $srcImage,
     0, 0, 0, 0,
     $newWidth, $newHeight,
     $originalWidth, $originalHeight
 );
 
-imagejpeg($resizedImage, $cachePath, 90);
+imagejpeg($dstImage, $cachePath, 90);
 
 header('Content-Type: image/jpeg');
-imagejpeg($resizedImage);
+imagejpeg($dstImage);
 
-imagedestroy($image);
-imagedestroy($resizedImage);
-?>
+imagedestroy($srcImage);
+imagedestroy($dstImage);
